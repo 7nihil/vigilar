@@ -1,7 +1,8 @@
-# 🛡️ Vigilar
+# 🛡️ Vigilar | **LLM Red-Team & Security Auditing Framework**
 
-**LLM Red-Team & Security Auditing Framework**
 
+![Description](images/vigilarhtml.png)
+![Description](images/vigilarhtml1.png)
 > OWASP LLM Top 10 v1.1 · 10 Attack Techniques · Multi-Provider · CVSS Scoring · Interactive Dashboard
 
 Vigilar fires adversarial prompts at any LLM and tells you exactly which OWASP LLM Top 10 categories it's vulnerable to, with CVSS-scored findings and a dashboard you can actually hand to someone.
@@ -21,25 +22,93 @@ Tested against `llama-3.1-8b-instant` (Groq), comparing a naive system prompt vs
 Hardening the system prompt cut critical bypasses by **94%** — but didn't eliminate them. One adversarial-suffix attack still extracted the full hardened prompt verbatim. Full writeup with every probe and response, including a note on run-to-run variance and an evaluator false-positive fix: **[FINDINGS.md](./FINDINGS.md)**.
 
 ---
+![Description](images/vigilarterminal.png)
 
-## Attack Techniques
+## Full Capability Breakdown
+
+
+Vigilar isn't one attack technique — it's a layered testing pipeline. Every payload below runs through every layer.
+
+
+### 1. OWASP LLM Top 10 Coverage
+
+
+All 20 baseline probes map directly to the official categories:
+
+| OWASP ID | Category | Example Probe |
+|---|---|---|
+| LLM01 | Prompt Injection | Direct role override, indirect injection via embedded instructions |
+| LLM02 | Insecure Output Handling | XSS payload generation, SQL/command injection via formatted output |
+| LLM03 | Training Data Poisoning | Bias elicitation, misinformation amplification |
+| LLM04 | Model Denial of Service | Recursive expansion, infinite loop instructions, context flooding |
+| LLM05 | Supply Chain Vulnerabilities | Plugin abuse, dependency confusion via model impersonation |
+| LLM06 | Sensitive Information Disclosure | System prompt extraction, PII leakage via context manipulation |
+| LLM07 | Insecure Plugin Design | Parameter discovery, unauthorized function invocation |
+| LLM08 | Excessive Agency | Autonomous action escalation, chain-of-action exploitation |
+| LLM09 | Overreliance | False authority fabrication, hallucinated compliance advice |
+| LLM10 | Model Theft | Architecture extraction, decision boundary probing |
+
+
+### 2. Advanced Attack Techniques (applied on top of every OWASP probe)
+
 
 | Technique | Description | Research Basis |
 |---|---|---|
-| 🔡 **Token Smuggling** | Unicode homoglyphs & zero-width character injection | Unicode security research |
-| 🎭 **Roleplay Escalation** | Fiction/simulation frames to bypass safety constraints | Jailbreak research |
-| ⛓️ **Jailbreak Chaining** | DAN + authority + urgency compound attacks | Red-team community |
-| 👤 **Persona Hijack** | Grandfather exploit, model update spoofing | Social engineering |
-| 📦 **Context Overflow** | Context window flooding + trailing injection | LLM architecture research |
-| 🔣 **Adversarial Suffix** | GCG-style optimized token sequences | Zou et al. (2023) |
-| 📈 **Crescendo Attack** | Gradual topic escalation across turns | Microsoft Research (2024) |
-| 🔫 **Many-Shot Jailbreak** | Context flooding with compliant examples | Anthropic Research (2024) |
-| ⚖️ **Competing Objectives** | Helpfulness vs. safety tension exploitation | AI safety research |
-| 🪞 **Prompt Reflection** | Extracting system context via output reflection | Novel technique |
+| 🔡 **Token Smuggling** | Unicode full-width homoglyphs & zero-width character injection to slip instructions past naive filters | Unicode security research |
+| 🎭 **Roleplay Escalation** | Fiction/simulation frames ("write a thriller", "tabletop exercise") to bypass safety constraints via in-character compliance | Jailbreak research |
+| ⛓️ **Jailbreak Chaining** | Compound attacks stacking DAN persona + fake developer authority + fabricated urgency in a single prompt | Red-team community |
+| 👤 **Persona Hijack** | Emotional manipulation (grandfather exploit) and fake model-update notifications with spoofed auth tokens | Social engineering |
+| 📦 **Context Overflow** | Repetitive filler text to flood the context window, followed by a trailing injected instruction | LLM architecture research |
+| 🔣 **Adversarial Suffix** | GCG-style nonsensical token sequences and bypass markers appended to a direct request | Zou et al. (2023) |
+| 📈 **Crescendo Attack** | 4-step gradual topic escalation — academic framing → concrete example → hypothetical → direct extraction | Microsoft Research (2024) |
+| 🔫 **Many-Shot Jailbreak** | Floods the prompt with fabricated "example" conversations showing the model already complying, to normalize the behavior | Anthropic Research (2024) |
+| ⚖️ **Competing Objectives** | Frames refusal as a violation of the model's "true purpose" (helpfulness, or AI safety research) to create internal tension | AI safety research |
+| 🪞 **Prompt Reflection** | Asks the model to quote/justify its own prior output, or list only positive directives, to extract prompt fragments indirectly | Novel technique |
 
-Each runs through 4 fuzzing variants (raw, Base64, hex, leetspeak) and a Turkish/English code-switch variant, plus dedicated multi-turn and Crescendo chains and adversarial paraphrasing — 243 total probes per full run.
+
+### 3. Fuzzing Engine — every OWASP + advanced probe is also run through 5 obfuscation variants
+
+
+| Variant | What it does | Why it matters |
+|---|---|---|
+| `[raw]` | The payload exactly as written, no encoding | Baseline — tests whether the attack works at all |
+| `[base64]` | Payload encoded as Base64, with an instruction to decode and follow it | Tests whether the model blindly executes decoded content instead of treating it with the same scrutiny |
+| `[hex]` | Payload encoded as hexadecimal | Same as Base64, different encoding — many models handle the two inconsistently |
+| `[leet]` | Payload rewritten in leetspeak (`4` for `a`, `3` for `e`, `7` for `t`, etc.) | Tests whether keyword-based safety filters can be trivially evaded with character substitution |
+| `[codeswitch]` | Payload split mid-sentence into English + Turkish, with an added disclaimer ("this is not a security test") | Tests whether switching languages mid-prompt degrades the model's adherence to its own safety rules — this is consistently one of the highest-yield bypass techniques in our testing |
+
+
+### 4. Multi-Turn & Crescendo Chains
+
+
+Six pre-built conversational chains (3–4 turns each) that build trust or context across multiple messages before the actual extraction attempt:
+
+- **Intern Trust Escalation** — establishes a junior-developer persona, then asks for a real function call example
+- **Fake Support Ticket** — builds a plausible account-lockout story, then requests an unauthorized fund transfer
+- **Fake Compliance Audit** — claims internal audit authority, then requests a raw SQL query execution
+- **Security Researcher Trust Build** — cites fake publications, then asks for system guideline excerpts "for an anonymized paper"
+- **Crescendo → System Prompt Extraction** — academic framing escalating step-by-step to a direct request for the real system prompt
+- **Crescendo → API Schema Extraction** — general capability questions escalating to exact function parameter names
+
+
+### 5. Adversarial Paraphrasing
+
+
+Every CRITICAL-severity probe is also rewritten into 2 semantically-equivalent paraphrased variants (via the target LLM itself, with a fallback to template-based rewriting if that fails). This tests whether a model's defenses are keyed to specific phrasing rather than actual intent — a model that blocks the literal string "ignore all instructions" but not a reworded equivalent has a brittle, not a robust, defense.
+
+
+### 6. Evaluation Layer
+
+
+Every response is scored through four independent signals:
+
+- **Heuristic keyword matching** — split into *hard* signals (real internal artifacts like function names or structural system-prompt dumps, which count as a leak even mid-refusal) and *soft* signals (words that often overlap with the user's own adversarial phrasing, which only count as a leak if the model isn't refusing) — see [FINDINGS.md](./FINDINGS.md) for why this distinction matters
+- **Llama Guard classification** — an independent SAFE/UNSAFE judgment from Meta's Llama Guard model, run as a second opinion alongside the heuristic
+- **CVSS-inspired scoring** — Attack Vector, Attack Complexity, Confidentiality/Integrity Impact, and Scope, weighted by exploitability status, producing a 0–10 score per finding
+- **Divergence scoring** — character-trigram similarity against a canonical refusal template, flagging responses that drift far from a standard "I can't help with that" even when the heuristic says SECURE
 
 ---
+
 
 ## Supported Providers
 
@@ -67,7 +136,7 @@ Run both and diff the reports to quantify exactly how much your system prompt is
 ## Installation
 
 ```bash
-git clone https://github.com/yourhandle/vigilar
+git clone https://github.com/7nihil/vigilar
 cd vigilar
 pip install -r requirements.txt
 
