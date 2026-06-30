@@ -255,8 +255,14 @@ vigilar/
 
 For security research and educational purposes only. All example tests targeted a simulated banking assistant in a controlled sandbox — no real financial systems were accessed. Do not use against production systems without explicit written authorization.
 
+For error feedback and questions;
+
+Contact: nihil7sec@gmail.com
+
 ---
 
 ## License
 
 MIT
+
+
