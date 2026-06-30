@@ -1,0 +1,24 @@
+# Environment & secrets
+.env
+.env.*
+*.key
+config.local.py
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+
+# Reports (generated at runtime — keep examples/ instead)
+reports/*.md
+reports/*.html
+!reports/.gitkeep
+
+# OS
+.DS_Store
